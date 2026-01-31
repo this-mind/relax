@@ -1041,10 +1041,13 @@ class Matmul(GPUScheduleRule):
                 if tensorize_sch is not None:
                     return tensorize_sch
         elif target.kind.name == "metal":
-            try:
-                return MetalMatmul().apply(func, target, _)
-            except:  # pylint: disable=bare-except
-                pass
+            # Skip MetalMatmul on x86_64 (Intel Macs) as they lack SIMD matrix support
+            is_x86_64 = target.host and "x86_64" in str(target.host)
+            if not is_x86_64:
+                try:
+                    return MetalMatmul().apply(func, target, _)
+                except:  # pylint: disable=bare-except
+                    pass
 
         # Step 2. Schedule matmul
         y_kernel_size = config.vthread_y * config.block_size_y * config.micro_size_y
